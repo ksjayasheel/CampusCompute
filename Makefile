@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -std=c11 -O2 -Wall -Wextra -Wpedantic -pthread
 LDLIBS = -pthread -lrt
 TARGET = campuscompute
-SOURCES = main.c banker_custom.c
+SOURCES = main.c
 
 all: $(TARGET)
 $(TARGET): $(SOURCES)
