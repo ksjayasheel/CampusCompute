@@ -1,0 +1,6 @@
+campuscompute
+*.o
+*.log
+core
+core.*
+
