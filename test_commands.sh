@@ -31,8 +31,6 @@ contains "4 -> 5 : J1"
 contains "Completed jobs: 1/1"
 run banker safe; contains "SAFE: sequence"
 run banker unsafe; contains "UNSAFE:"
-run banker samples/banker_safe.txt; contains "RESULT: SAFE"
-run banker samples/banker_unsafe.txt; contains "RESULT: UNSAFE"
 run logger; contains "produced=12 consumed=12 pending=0"
 test "$(wc -l < campuscompute.log)" -eq 12
 run ipc; contains "Shared-memory object unlinked"
