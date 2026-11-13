@@ -37,7 +37,6 @@ typedef struct {
 typedef struct {int job, start, end;} Event;
 typedef struct {Event ev[MAX_EVENTS]; int n;} Timeline;
 typedef struct {double avg_wait, avg_turn, utilization; int makespan, busy, completed;} Stats;
-int banker_custom(const char *path);
 
 static void usage(const char *prog) {
     printf("CampusCompute - OS Level 3 mini-project\n"
@@ -49,7 +48,7 @@ static void usage(const char *prog) {
            "  compare [--quantum N] [--file jobs.csv] Compare same workload\n"
            "  logger                       Bounded POSIX producer-consumer logging\n"
            "  ipc                          POSIX shared memory + named semaphores\n"
-           "  banker safe|unsafe|FILE      Banker's safety analysis (custom state file)\n"
+           "  banker safe|unsafe           Banker's safety analysis\n"
            "  worker normal|fail           fork/waitpid worker demonstration\n"
            "  limit                        setrlimit(RLIMIT_FSIZE) demonstration\n"
            "  cleanup                      Remove this project's generated log\n"
@@ -468,10 +467,10 @@ int main(int argc,char **argv){
         return schedule_demo(j,n,!strcmp(cmd,"fcfs")?0:!strcmp(cmd,"rr")?1:2,quantum,1,NULL)?1:0;
     }
     if(!strcmp(cmd,"banker")){
-        if(argc!=3){fprintf(stderr,"Usage: %s banker safe|unsafe|STATE_FILE\n",argv[0]);return 2;}
+        if(argc!=3){fprintf(stderr,"Usage: %s banker safe|unsafe\n",argv[0]);return 2;}
         if(!strcmp(argv[2],"safe"))return banker_demo(0)?1:0;
         if(!strcmp(argv[2],"unsafe"))return banker_demo(1)?1:0;
-        return banker_custom(argv[2])?1:0;
+        fprintf(stderr,"Usage: %s banker safe|unsafe\n",argv[0]);return 2;
     }
     if(!strcmp(cmd,"worker")){
         if(argc!=3||(strcmp(argv[2],"normal")&&strcmp(argv[2],"fail"))){fprintf(stderr,"Usage: %s worker normal|fail\n",argv[0]);return 2;}
