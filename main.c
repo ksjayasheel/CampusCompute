@@ -354,26 +354,58 @@ static int banker_demo(int unsafe){
     enum {P=5,R=3};
     int alloc[P][R]={{0,1,0},{2,0,0},{3,0,2},{2,1,1},{0,0,2}};
     int max[P][R]={{7,5,3},{3,2,2},{9,0,2},{2,2,2},{4,3,3}};
-    int avail[R]={3,3,2};if(unsafe)for(int r=0;r<R;r++)avail[r]=0;
+    /* Unsafe example permits some completions, but leaves P0 and P2 blocked. */
+    int avail[R]={3,3,2};
+    if(unsafe){avail[0]=1;avail[1]=2;avail[2]=2;}
     int need[P][R],work[R],finish[P]={0},seq[P],len=0;
     for(int r=0;r<R;r++)work[r]=avail[r];
     printf("\n=== BANKER'S %s STATE ===\n",unsafe?"UNSAFE":"SAFE");
-    printf("Available: [%d %d %d]\n",avail[0],avail[1],avail[2]);
+    printf("Available / initial Work: [%d %d %d]\n",work[0],work[1],work[2]);
     puts("Job  Allocation  Maximum     Need");
     for(int i=0;i<P;i++){
-        for(int r=0;r<R;r++){if(max[i][r]<alloc[i][r]){fprintf(stderr,"Invalid resource matrix\n");return -1;}need[i][r]=max[i][r]-alloc[i][r];}
+        for(int r=0;r<R;r++){
+            if(max[i][r]<alloc[i][r]){fprintf(stderr,"Invalid resource matrix\n");return -1;}
+            need[i][r]=max[i][r]-alloc[i][r];
+        }
         printf("P%-3d [%d %d %d]   [%d %d %d]   [%d %d %d]\n",i,alloc[i][0],alloc[i][1],alloc[i][2],max[i][0],max[i][1],max[i][2],need[i][0],need[i][1],need[i][2]);
     }
-    int progressed;
-    do {progressed=0;
+    int progressed,pass=0;
+    do {
+        progressed=0;
+        printf("\n--- Safety check pass %d ---\n",++pass);
         for(int i=0;i<P;i++){
             if(finish[i])continue;
-            int can=1;for(int r=0;r<R;r++)if(need[i][r]>work[r])can=0;
-            if(can){for(int r=0;r<R;r++)work[r]+=alloc[i][r];finish[i]=1;seq[len++]=i;progressed=1;printf("P%d can finish; Work becomes [%d %d %d]\n",i,work[0],work[1],work[2]);}
+            int can=1;
+            printf("P%d: Need [%d %d %d] vs Work [%d %d %d]: ",
+                i,need[i][0],need[i][1],need[i][2],work[0],work[1],work[2]);
+            for(int r=0;r<R;r++){
+                if(r)printf(", ");
+                printf("%c %d %s %d", 'A'+r,need[i][r],
+                    need[i][r]<=work[r]?"<=":">",work[r]);
+                if(need[i][r]>work[r])can=0;
+            }
+            if(!can){
+                puts(" -> BLOCKED (Need > Work for at least one resource)");
+                continue;
+            }
+            puts(" -> CAN FINISH (Need <= Work for all resources)");
+            printf("    Release Allocation [%d %d %d]: Work [%d %d %d] + Allocation = ",
+                alloc[i][0],alloc[i][1],alloc[i][2],work[0],work[1],work[2]);
+            for(int r=0;r<R;r++)work[r]+=alloc[i][r];
+            printf("[%d %d %d]\n",work[0],work[1],work[2]);
+            finish[i]=1;seq[len++]=i;progressed=1;
         }
-    } while(progressed);
-    if(len==P){printf("SAFE: sequence ");for(int i=0;i<len;i++)printf("%sP%d",i?" -> ":"",seq[i]);puts("");}
-    else {printf("UNSAFE: no complete safe sequence; unfinished:");for(int i=0;i<P;i++)if(!finish[i])printf(" P%d",i);puts("");}
+    } while(progressed && len<P);
+    if(len==P){
+        printf("\nSAFE: sequence ");
+        for(int i=0;i<len;i++)printf("%sP%d",i?" -> ":"",seq[i]);
+        puts("");
+    }else{
+        printf("\nUNSAFE: no complete safe sequence; unfinished:");
+        for(int i=0;i<P;i++)if(!finish[i])printf(" P%d",i);
+        printf("\nFinal Work: [%d %d %d]\n",work[0],work[1],work[2]);
+        puts("Remaining processes need more than Work in at least one resource.");
+    }
     return (unsafe?(len==P):(len!=P))?-1:0;
 }
 static int worker_demo(int fail){
