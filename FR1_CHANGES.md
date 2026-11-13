@@ -7,7 +7,9 @@
 - Marked selected jobs `JOB_RUNNING` during FCFS/Priority execution and each Round Robin time slice.
 - Marked completed jobs `JOB_COMPLETED` when their remaining burst reaches zero.
 - Marked preempted Round Robin jobs `JOB_READY` before requeueing.
-- Existing scheduling output and commands remain unchanged; status is internal tracking.
+- FCFS, RR, and Priority now show initial and final job status, completed-job counts, and RUNNING -> READY/COMPLETED transitions in their timelines.
+- Comparison includes a completed-job count for each policy; existing scheduling commands remain compatible.
+- `make check` verifies status display and RR preemption transitions.
 - Also corrected `RLIMIT_FSIZE`: the initial write can legally be short; a checked follow-up write then demonstrates `SIGXFSZ`.
 
 Build and test with `make clean && make && make check`.
