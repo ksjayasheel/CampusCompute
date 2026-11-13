@@ -27,8 +27,6 @@ To navigate interactively, run `./campuscompute menu`.
 | FR4 | `./campuscompute ipc` | POSIX shared memory, two named semaphores, fork, timeout, unlink |
 | FR5 | `./campuscompute banker safe` | Built-in safe case |
 | FR5 | `./campuscompute banker unsafe` | Built-in unsafe case |
-| FR5 | `./campuscompute banker samples/banker_safe.txt` | User-supplied resource matrices |
-| FR5 | `./campuscompute banker samples/banker_unsafe.txt` | User-supplied unsafe matrices |
 | FR6 | `./campuscompute worker normal` | fork + waitpid + exit status 0 |
 | FR6 | `./campuscompute worker fail` | Deliberately simulated exit code 42, detected by parent |
 | FR7 | `./campuscompute limit` | RLIMIT_FSIZE applied inside child; SIGXFSZ detected by parent |
@@ -61,17 +59,6 @@ id,arrival,burst,priority
 
 IDs unique and positive, arrivals nonnegative, CPU bursts positive, priorities nonnegative. Maximum 64 jobs.
 
-## Banker's custom input format
-
-Whitespace-separated integers, **without a header**:
-
-1. `process_count resource_count` (max 32 processes / 16 resource types)
-2. `resource_count` integers for **Available**
-3. `process_count` lines of `resource_count` integers for **Allocation**
-4. `process_count` lines of `resource_count` integers for **Maximum**
-
-The program validates `Maximum >= Allocation` for every entry, calculates **Need = Maximum - Allocation**, then runs the safety algorithm. Unsafe resource states are valid inputs; the command exits successfully while reporting UNSAFE. Run the two files in `samples/` as examples.
-
 ## Screenshot evidence: S01 to S24
 
 The PDF submission is evidence of *your own terminal*, not part of the source ZIP. Before screenshots:
@@ -96,9 +83,8 @@ Each screenshot must show the **full actual SRN in the terminal prompt**, with a
 ## Code map
 
 - `main.c`: scheduling, CLI/menu, threads, IPC, built-in Banker examples, workers, limits, integration.
-- `banker_custom.c`: external matrix parsing and Banker's safety algorithm.
 - `Makefile`: reproducible source build.
-- `samples/`: jobs and safe/unsafe/invalid input examples.
+- `samples/`: job and invalid-input examples.
 - `test_commands.sh`: repeatable smoke tests (`make check`).
 
 ## Sources of ideas
