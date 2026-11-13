@@ -9,6 +9,16 @@ for policy in fcfs rr priority compare; do
   if [[ "$policy" = rr || "$policy" = compare ]]; then run "$policy" --quantum 3 --file samples/jobs.csv
   else run "$policy" --file samples/jobs.csv; fi
   contains "utilization\|CPU util"
+  if [[ "$policy" = compare ]]; then
+    contains "Completed"
+    contains "4/4"
+  else
+    contains "At t=0"
+    contains "Final status"
+    contains "RUNNING -> COMPLETED"
+    contains "Completed jobs: 4/4"
+  fi
+  if [[ "$policy" = rr ]]; then contains "RUNNING -> READY"; fi
 done
 run banker safe; contains "SAFE: sequence"
 run banker unsafe; contains "UNSAFE:"
