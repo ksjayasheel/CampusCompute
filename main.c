@@ -403,13 +403,36 @@ static int banker_demo(int unsafe){
 }
 static int worker_demo(int fail){
     printf("\n=== WORKER %s ===\n",fail?"SIMULATED FAILURE":"NORMAL COMPLETION");
-    fflush(NULL);pid_t pid=fork();if(pid<0){perror("fork");return -1;}
-    if(pid==0){printf("Child worker PID=%ld: %s\n",(long)getpid(),fail?"SIMULATING exit code 42":"work completed");fflush(stdout);_exit(fail?42:0);}
-    int status;pid_t result;do{result=waitpid(pid,&status,0);}while(result<0&&errno==EINTR);
+    fflush(NULL);
+    pid_t pid=fork();
+    if(pid<0){perror("fork");return -1;}
+    if(pid==0){
+        printf("[CHILD %ld] Worker started\n",(long)getpid());
+        if(fail)puts("[CHILD] Simulating a controlled failure (exit code 42)");
+        else puts("[CHILD] Work completed successfully (exit code 0)");
+        fflush(stdout);
+        _exit(fail?42:0);
+    }
+    printf("[PARENT %ld] Created child worker PID=%ld\n",(long)getpid(),(long)pid);
+    puts("[PARENT] Waiting for child termination using waitpid()");
+    fflush(stdout);
+    int status;pid_t result;
+    do{result=waitpid(pid,&status,0);}while(result<0&&errno==EINTR);
     if(result<0){perror("waitpid");return -1;}
-    printf("Parent PID=%ld reaped child PID=%ld\n",(long)getpid(),(long)result);
-    if(WIFEXITED(status)){printf("Child exited normally with status %d%s\n",WEXITSTATUS(status),fail?" (CONTROLLED SIMULATED FAILURE)":"");return (fail?(WEXITSTATUS(status)!=42):(WEXITSTATUS(status)!=0))?-1:0;}
-    if(WIFSIGNALED(status))printf("Child terminated by signal %d\n",WTERMSIG(status));
+    printf("[PARENT] Child PID=%ld reaped successfully\n",(long)result);
+    if(WIFEXITED(status)){
+        int code=WEXITSTATUS(status);
+        printf("[PARENT] Child exited via _exit() with status %d\n",code);
+        if(fail){
+            if(code==42){puts("[PARENT] CONTROLLED SIMULATED FAILURE detected as expected");return 0;}
+            puts("[PARENT] Unexpected failure status");return -1;
+        }
+        if(code==0){puts("[PARENT] Worker completed normally");return 0;}
+        puts("[PARENT] Unexpected nonzero exit status");return -1;
+    }
+    if(WIFSIGNALED(status))
+        printf("[PARENT] Child terminated by signal %d\n",WTERMSIG(status));
+    puts("[PARENT] Unexpected worker termination");
     return -1;
 }
 static int limit_demo(void){
