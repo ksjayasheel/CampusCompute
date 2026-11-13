@@ -36,7 +36,7 @@ typedef struct {
 } Job;
 typedef struct {int job, start, end;} Event;
 typedef struct {Event ev[MAX_EVENTS]; int n;} Timeline;
-typedef struct {double avg_wait, avg_turn, utilization; int makespan, busy;} Stats;
+typedef struct {double avg_wait, avg_turn, utilization; int makespan, busy, completed;} Stats;
 int banker_custom(const char *path);
 
 static void usage(const char *prog) {
@@ -173,9 +173,18 @@ static int schedule(Job *j,int n,int method,int quantum,Timeline *tl) {
     }
     return 0;
 }
+static const char *job_status_name(JobStatus status) {
+    switch (status) {
+        case JOB_NEW: return "NEW";
+        case JOB_READY: return "READY";
+        case JOB_RUNNING: return "RUNNING";
+        case JOB_COMPLETED: return "COMPLETED";
+    }
+    return "UNKNOWN";
+}
 static Stats stats(Job *j,int n) {
     Stats s={0};
-    for(int i=0;i<n;i++) {int tat=j[i].completion-j[i].arrival;int wait=tat-j[i].burst;s.avg_turn+=tat;s.avg_wait+=wait;if(j[i].completion>s.makespan)s.makespan=j[i].completion;s.busy+=j[i].burst;}
+    for(int i=0;i<n;i++) {int tat=j[i].completion-j[i].arrival;int wait=tat-j[i].burst;s.avg_turn+=tat;s.avg_wait+=wait;if(j[i].completion>s.makespan)s.makespan=j[i].completion;s.busy+=j[i].burst;if(j[i].status==JOB_COMPLETED)s.completed++;}
     s.avg_turn/=n;s.avg_wait/=n;s.utilization=s.makespan?100.0*s.busy/s.makespan:0;return s;
 }
 static const char *policy_name(int m){return m==0?"FCFS":m==1?"ROUND ROBIN":"NON-PREEMPTIVE PRIORITY";}
@@ -187,25 +196,44 @@ static int schedule_demo(Job *original,int n,int method,int quantum,int verbose,
     printf("\n=== %s ===\n",policy_name(method));
     if(method==1)printf("Time quantum = %d\n",quantum);
     printf("Tie-break: arrival time ascending, then job ID ascending; priority: smaller number first.\n");
+    puts("Lifecycle: NEW (before arrival) -> READY -> RUNNING -> COMPLETED.");
+    if(method==1)puts("Round Robin: unfinished jobs return from RUNNING to READY after a time slice.");
     printf("Timeline (start -> end):\n");
     for(int k=0;k<tl.n;k++){
         if(tl.ev[k].job<0)printf("  %d -> %d : IDLE\n",tl.ev[k].start,tl.ev[k].end);
-        else printf("  %d -> %d : J%d\n",tl.ev[k].start,tl.ev[k].end,tl.ev[k].job);
+        else {
+            int completed_here=0;
+            for(int i=0;i<n;i++)
+                if(j[i].id==tl.ev[k].job && j[i].completion==tl.ev[k].end)
+                    completed_here=1;
+            printf("  %d -> %d : J%d [RUNNING -> %s]\n",
+                   tl.ev[k].start,tl.ev[k].end,tl.ev[k].job,
+                   completed_here ? "COMPLETED" : "READY");
+        }
     }
     printf("Gantt chart: ");
     for(int k=0;k<tl.n;k++)if(tl.ev[k].job<0)printf("|IDLE %d-%d",tl.ev[k].start,tl.ev[k].end);else printf("|J%d %d-%d",tl.ev[k].job,tl.ev[k].start,tl.ev[k].end);
     puts("|");
     printf("Execution order: ");int shown=0;for(int k=0;k<tl.n;k++)if(tl.ev[k].job>=0){printf("%sJ%d",shown?" -> ":"",tl.ev[k].job);shown++;}puts("");
-    printf("%-6s %-8s %-7s %-8s %-11s %-12s %-8s\n","Job","Arrival","Burst","Priority","Completion","Turnaround","Waiting");
-    for(int i=0;i<n;i++)printf("J%-5d %-8d %-7d %-8d %-11d %-12d %-8d\n",j[i].id,j[i].arrival,j[i].burst,j[i].priority,j[i].completion,j[i].completion-j[i].arrival,j[i].completion-j[i].arrival-j[i].burst);
+    printf("%-6s %-8s %-7s %-8s %-11s %-12s %-8s %-10s %-12s\n",
+           "Job","Arrival","Burst","Priority","Completion","Turnaround","Waiting","At t=0","Final status");
+    for(int i=0;i<n;i++)
+        printf("J%-5d %-8d %-7d %-8d %-11d %-12d %-8d %-10s %-12s\n",
+               j[i].id,j[i].arrival,j[i].burst,j[i].priority,
+               j[i].completion,j[i].completion-j[i].arrival,
+               j[i].completion-j[i].arrival-j[i].burst,
+               job_status_name(j[i].arrival==0?JOB_READY:JOB_NEW),
+               job_status_name(j[i].status));
+    printf("Completed jobs: %d/%d\n",s.completed,n);
     printf("Average turnaround = %.2f; average waiting = %.2f; makespan = %d; CPU utilization = %.2f%%\n",s.avg_turn,s.avg_wait,s.makespan,s.utilization);
     return 0;
 }
 static int compare_demo(Job *j,int n,int quantum){
     Stats s[3];printf("Comparing all policies on SAME %d-job workload (RR quantum=%d)\n",n,quantum);
     for(int m=0;m<3;m++)if(schedule_demo(j,n,m,quantum,0,&s[m]))return -1;
-    printf("%-24s %-18s %-18s %-10s %-10s\n","Policy","Avg turnaround","Avg waiting","Makespan","CPU util");
-    for(int m=0;m<3;m++)printf("%-24s %-18.2f %-18.2f %-10d %9.2f%%\n",policy_name(m),s[m].avg_turn,s[m].avg_wait,s[m].makespan,s[m].utilization);
+    printf("%-24s %-18s %-18s %-10s %-10s %-12s\n","Policy","Avg turnaround","Avg waiting","Makespan","CPU util","Completed");
+    for(int m=0;m<3;m++)printf("%-24s %-18.2f %-18.2f %-10d %9.2f%% %7d/%d\n",
+        policy_name(m),s[m].avg_turn,s[m].avg_wait,s[m].makespan,s[m].utilization,s[m].completed,n);
     return 0;
 }
 
