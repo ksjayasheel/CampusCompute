@@ -115,7 +115,7 @@ static int load_jobs(const char *path, Job *j, int *n) {
 }
 static int add_event(Timeline *t,int job,int start,int end) {
     if(end<=start)return 0;
-    if(t->n && t->ev[t->n-1].job==job && t->ev[t->n-1].end==start){t->ev[t->n-1].end=end;return 0;}
+    /* Preserve every scheduling dispatch, including consecutive RR quanta of the same job. */
     if(t->n>=MAX_EVENTS){fprintf(stderr,"Timeline exceeds %d events\n",MAX_EVENTS);return -1;}
     t->ev[t->n++]=(Event){job,start,end};return 0;
 }
