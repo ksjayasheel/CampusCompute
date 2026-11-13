@@ -20,6 +20,15 @@ for policy in fcfs rr priority compare; do
   fi
   if [[ "$policy" = rr ]]; then contains "RUNNING -> READY"; fi
 done
+# One runnable job must show each RR quantum separately, not merge adjacent slices.
+rr_case=$(mktemp)
+printf 'id,arrival,burst,priority\n1,0,5,1\n' > "$rr_case"
+./campuscompute rr --quantum 2 --file "$rr_case" > /tmp/campuscompute_test_output.txt
+rm -f "$rr_case"
+contains "0 -> 2 : J1"
+contains "2 -> 4 : J1"
+contains "4 -> 5 : J1"
+contains "Completed jobs: 1/1"
 run banker safe; contains "SAFE: sequence"
 run banker unsafe; contains "UNSAFE:"
 run banker samples/banker_safe.txt; contains "RESULT: SAFE"
