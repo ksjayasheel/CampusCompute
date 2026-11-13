@@ -19,7 +19,7 @@ To navigate interactively, run `./campuscompute menu`.
 
 | Requirement | Command | Demonstration |
 |---|---|---|
-| FR1 / FR2 | `./campuscompute fcfs --file samples/jobs.csv` | FCFS, validated jobs, timeline, Gantt, per-job CT/TAT/WT, utilisation |
+| FR1 / FR2 | `./campuscompute fcfs --file samples/jobs.csv` | FCFS, validated jobs, lifecycle states, timeline, Gantt, per-job CT/TAT/WT, utilisation |
 | FR2 | `./campuscompute rr --quantum 3 --file samples/jobs.csv` | Preemptive RR with ready-queue order and quantum |
 | FR2 | `./campuscompute priority --file samples/jobs.csv` | Non-preemptive priority |
 | FR2 | `./campuscompute compare --quantum 3 --file samples/jobs.csv` | Same workload, three policies |
@@ -44,7 +44,8 @@ To navigate interactively, run `./campuscompute menu`.
 - Priority: smaller priority number first; ties by earlier arrival then smaller job ID.
 - RR: FIFO queue; ties by arrival then smaller ID; newly arrived jobs enter before the just-preempted job is appended; default quantum is 2.
 - CT is completion time, TAT = CT - arrival, WT = TAT - burst, CPU utilisation = total CPU burst / makespan x 100%.
-- Timeline and Gantt chart show idle intervals where applicable. All job metrics are calculated, not hard-coded.
+- Timeline and Gantt chart show idle intervals where applicable. The timeline labels each execution interval as RUNNING -> READY (RR preemption) or RUNNING -> COMPLETED; result tables show each job's status at time zero and its final status. Comparison shows completed-job counts.
+- All job metrics are calculated, not hard-coded.
 
 ## Job CSV format
 
