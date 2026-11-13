@@ -376,21 +376,14 @@ static int banker_demo(int unsafe){
         for(int i=0;i<P;i++){
             if(finish[i])continue;
             int can=1;
-            printf("P%d: Need [%d %d %d] vs Work [%d %d %d]: ",
-                i,need[i][0],need[i][1],need[i][2],work[0],work[1],work[2]);
-            for(int r=0;r<R;r++){
-                if(r)printf(", ");
-                printf("%c %d %s %d", 'A'+r,need[i][r],
-                    need[i][r]<=work[r]?"<=":">",work[r]);
-                if(need[i][r]>work[r])can=0;
-            }
-            if(!can){
-                puts(" -> BLOCKED (Need > Work for at least one resource)");
-                continue;
-            }
-            puts(" -> CAN FINISH (Need <= Work for all resources)");
-            printf("    Release Allocation [%d %d %d]: Work [%d %d %d] + Allocation = ",
-                alloc[i][0],alloc[i][1],alloc[i][2],work[0],work[1],work[2]);
+            for(int r=0;r<R;r++)if(need[i][r]>work[r])can=0;
+            printf("P%d: Need [%d %d %d] %s Work [%d %d %d] -> %s\n",
+                i,need[i][0],need[i][1],need[i][2],
+                can?"<=":"not <=",work[0],work[1],work[2],
+                can?"CAN FINISH":"BLOCKED");
+            if(!can)continue;
+            printf("    Work: [%d %d %d] + Allocation [%d %d %d] = ",
+                work[0],work[1],work[2],alloc[i][0],alloc[i][1],alloc[i][2]);
             for(int r=0;r<R;r++)work[r]+=alloc[i][r];
             printf("[%d %d %d]\n",work[0],work[1],work[2]);
             finish[i]=1;seq[len++]=i;progressed=1;
