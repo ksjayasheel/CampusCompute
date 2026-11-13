@@ -309,24 +309,33 @@ static int ipc_demo(void){
     if(ftruncate(fd,sizeof(SharedBlock))<0){perror("ftruncate");goto cleanup;}
     block=mmap(NULL,sizeof(SharedBlock),PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);if(block==MAP_FAILED){perror("mmap");goto cleanup;}
     memset(block,0,sizeof(*block));
+    printf("[IPC setup] Shared memory created and mapped (%zu bytes)\n",sizeof(SharedBlock));
     req=sem_open(request_name,O_CREAT|O_EXCL,0600,0);if(req==SEM_FAILED){perror("sem_open request");goto cleanup;}
     resp=sem_open(response_name,O_CREAT|O_EXCL,0600,0);if(resp==SEM_FAILED){perror("sem_open response");goto cleanup;}
+    puts("[IPC setup] Request and response named semaphores created (initial value 0)");
     fflush(NULL);pid=fork();if(pid<0){perror("fork");goto cleanup;}
     if(pid==0){
+        printf("[child %ld] Waiting on request semaphore\n",(long)getpid());fflush(stdout);
         int e;do{e=sem_wait(req);}while(e<0&&errno==EINTR);
         if(e<0)_exit(2);
+        printf("[child %ld] Request received; reading input=%d\n",(long)getpid(),block->input);fflush(stdout);
         block->result=block->input*block->input;
         snprintf(block->message,sizeof(block->message),"Child %ld squared %d",(long)getpid(),block->input);
+        printf("[child %ld] Wrote result=%d; signaling response semaphore\n",(long)getpid(),block->result);fflush(stdout);
         if(sem_post(resp)<0)_exit(3);
         _exit(0);
     }
+    printf("[parent %ld] Created child PID=%ld\n",(long)getpid(),(long)pid);
     block->input=7;printf("Parent %ld wrote input=%d to POSIX shared memory\n",(long)getpid(),block->input);
+    puts("[parent] Signaling request semaphore");
     if(sem_post(req)<0){perror("sem_post request");goto cleanup;}
     struct timespec deadline;
     if(clock_gettime(CLOCK_REALTIME,&deadline)<0){perror("clock_gettime");goto cleanup;}
     deadline.tv_sec+=5;
+    puts("[parent] Waiting on response semaphore (timeout: 5 seconds)");
     int e;do{e=sem_timedwait(resp,&deadline);}while(e<0&&errno==EINTR);
     if(e<0){perror("sem_timedwait response (5-second timeout)");goto cleanup;}
+    puts("[parent] Response semaphore received");
     printf("Parent read: result=%d; message='%s'\n",block->result,block->message);
     ret=0;
 cleanup:
