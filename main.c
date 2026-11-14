@@ -443,17 +443,17 @@ static int limit_demo(void){
     if(pid==0){
         struct rlimit lim={1024,1024};
         if(setrlimit(RLIMIT_FSIZE,&lim)<0){perror("setrlimit");_exit(3);}
-        printf("Child: file size soft/hard limit = 1024 bytes\n");fflush(stdout);
+        printf("Child: soft limit = 1024 bytes; hard limit = 1024 bytes\n");\n        printf("Child: attempting to write 2048 bytes to the temporary file\n");fflush(stdout);
         char data[2048];memset(data,'X',sizeof(data));
         /* A write beyond RLIMIT_FSIZE raises SIGXFSZ (default: terminate). */
         /* On Linux, exceeding RLIMIT_FSIZE normally terminates the child with SIGXFSZ. */
         ssize_t nw=write(fd,data,sizeof(data));
         if(nw<0)perror("write failed");
         else {
-            fprintf(stderr,"Child: first write returned %zd bytes\n",nw);
+            fprintf(stderr,"Child: first write completed %zd of 2048 requested bytes\n",nw);
             /* If the first write was partial, a further write triggers SIGXFSZ. */
             if ((size_t)nw < sizeof(data)) {
-                ssize_t next = write(fd, data + nw, 1);
+                fprintf(stderr,"Child: attempting another 1-byte write beyond the 1024-byte limit\n");fflush(stderr);\n                ssize_t next = write(fd, data + nw, 1);
                 if (next < 0) perror("second write failed");
             }
         }
@@ -461,11 +461,11 @@ static int limit_demo(void){
     }
     close(fd);int status,ok=0;pid_t got;do{got=waitpid(pid,&status,0);}while(got<0&&errno==EINTR);
     if(got<0)perror("waitpid");
-    else if(WIFSIGNALED(status)&&WTERMSIG(status)==SIGXFSZ){puts("Parent: observed SIGXFSZ: file size limit enforced.");ok=1;}
+    else if(WIFSIGNALED(status)&&WTERMSIG(status)==SIGXFSZ){puts("Parent: child terminated by SIGXFSZ (file size exceeded).");puts("Parent: RLIMIT_FSIZE successfully enforced.");ok=1;}
     else if(WIFEXITED(status))printf("Parent: child exited with code %d (expected SIGXFSZ)\n",WEXITSTATUS(status));
     else if(WIFSIGNALED(status))printf("Parent: unexpected signal %d\n",WTERMSIG(status));
     if(unlink(tmp)<0){perror("unlink temporary test file");return -1;}
-    puts("Temporary test file removed.");return ok?0:-1;
+    puts("Parent: temporary test file removed.");return ok?0:-1;
 }
 /* Verify only IPC names belonging to CampusCompute; never delete unknown objects. */
 static int verify_ipc_objects(void){
