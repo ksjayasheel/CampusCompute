@@ -286,12 +286,27 @@ static int logger_demo(void){
         if(rc){fprintf(stderr,"producer create: %s\n",strerror(rc));break;}started++;
     }
     if(started<2){pthread_mutex_lock(&q.mu);q.active_producers-=2-started;pthread_cond_broadcast(&q.not_empty);pthread_mutex_unlock(&q.mu);}
-    for(int i=0;i<started;i++)pthread_join(producers[i],NULL);
-    if(consumer_started)pthread_join(consumer,NULL);
+    int join_failed=0;
+    for(int i=0;i<started;i++){
+        int join_rc=pthread_join(producers[i],NULL);
+        if(join_rc){fprintf(stderr,"producer join: %s\n",strerror(join_rc));join_failed=1;}
+    }
+    if(consumer_started){
+        int join_rc=pthread_join(consumer,NULL);
+        if(join_rc){fprintf(stderr,"consumer join: %s\n",strerror(join_rc));join_failed=1;}
+    }
+    /* Synchronization objects are destroyed only after all threads have joined. */
+    if(!join_failed)puts("[FR3 cleanup] All started producer/consumer threads joined");
 finish:
-    pthread_cond_destroy(&q.not_empty);pthread_cond_destroy(&q.not_full);pthread_mutex_destroy(&q.mu);
-    if(fclose(f)!=0){perror("close log");return -1;}
-    if(rc||q.failed){fprintf(stderr,"Logger did not complete successfully\n");return -1;}
+    int cleanup_failed=0;
+    if(join_failed)cleanup_failed=1;
+    if(pthread_cond_destroy(&q.not_empty)!=0)cleanup_failed=1;
+    if(pthread_cond_destroy(&q.not_full)!=0)cleanup_failed=1;
+    if(pthread_mutex_destroy(&q.mu)!=0)cleanup_failed=1;
+    if(!cleanup_failed)puts("[FR3 cleanup] Condition variables and mutex destroyed");
+    if(fclose(f)!=0){perror("close log");cleanup_failed=1;}
+    else puts("[FR3 cleanup] Log file closed (retained for S22 evidence)");
+    if(rc||q.failed||cleanup_failed){fprintf(stderr,"Logger did not complete successfully\n");return -1;}
     printf("All threads joined: produced=%d consumed=%d pending=%d full_waits=%d empty_waits=%d\n",q.produced,q.consumed,q.count,q.wait_full,q.wait_empty);
     printf("Generated log: %s\n",LOG_FILE);
     return (q.produced==LOG_ITEMS && q.consumed==LOG_ITEMS && q.count==0)?0:-1;
@@ -339,15 +354,24 @@ static int ipc_demo(void){
     printf("Parent read: result=%d; message='%s'\n",block->result,block->message);
     ret=0;
 cleanup:
-    if(pid>0){int status;if(ret!=0)kill(pid,SIGTERM);if(waitpid(pid,&status,0)<0){perror("waitpid");ret=-1;}else if(!WIFEXITED(status)||WEXITSTATUS(status)!=0){fprintf(stderr,"IPC child terminated unsuccessfully\n");ret=-1;}else printf("IPC child reaped successfully\n");}
-    if(resp!=SEM_FAILED)sem_close(resp);
-    if(req!=SEM_FAILED)sem_close(req);
-    if(block!=MAP_FAILED)munmap(block,sizeof(*block));
-    if(fd>=0)close(fd);
+    if(pid>0){
+        int status;pid_t waited;
+        if(ret!=0 && kill(pid,SIGTERM)<0 && errno!=ESRCH){perror("kill IPC child");ret=-1;}
+        do{waited=waitpid(pid,&status,0);}while(waited<0&&errno==EINTR);
+        if(waited<0){perror("waitpid");ret=-1;}
+        else if(ret==0 && (!WIFEXITED(status)||WEXITSTATUS(status)!=0)){
+            fprintf(stderr,"IPC child terminated unsuccessfully\n");ret=-1;
+        }else puts("[FR4 cleanup] Child process reaped with waitpid()");
+    }
+    if(resp!=SEM_FAILED && sem_close(resp)<0){perror("sem_close response");ret=-1;}
+    if(req!=SEM_FAILED && sem_close(req)<0){perror("sem_close request");ret=-1;}
+    if(block!=MAP_FAILED && munmap(block,sizeof(*block))<0){perror("munmap");ret=-1;}
+    if(fd>=0 && close(fd)<0){perror("close shared-memory fd");ret=-1;}
     /* Only objects created with this process-specific name are unlinked. */
-    if(resp!=SEM_FAILED){if(sem_unlink(response_name)<0)perror("sem_unlink response");else puts("Response semaphore unlinked");}
-    if(req!=SEM_FAILED){if(sem_unlink(request_name)<0)perror("sem_unlink request");else puts("Request semaphore unlinked");}
-    if(fd>=0){if(shm_unlink(shm_name)<0)perror("shm_unlink");else puts("Shared-memory object unlinked");}
+    if(resp!=SEM_FAILED){if(sem_unlink(response_name)<0){perror("sem_unlink response");ret=-1;}else puts("[FR4 cleanup] Response semaphore unlinked");}
+    if(req!=SEM_FAILED){if(sem_unlink(request_name)<0){perror("sem_unlink request");ret=-1;}else puts("[FR4 cleanup] Request semaphore unlinked");}
+    if(fd>=0){if(shm_unlink(shm_name)<0){perror("shm_unlink");ret=-1;}else puts("[FR4 cleanup] Shared-memory object unlinked");}
+    if(ret==0)puts("[FR4 cleanup] Shared mapping and handles closed; IPC resources released");
     return ret;
 }
 
@@ -420,7 +444,7 @@ static int worker_demo(int fail){
     int status;pid_t result;
     do{result=waitpid(pid,&status,0);}while(result<0&&errno==EINTR);
     if(result<0){perror("waitpid");return -1;}
-    printf("[PARENT] Child PID=%ld reaped successfully\n",(long)result);
+    printf("[PARENT] Child PID=%ld reaped successfully (no zombie child)\n",(long)result);
     if(WIFEXITED(status)){
         int code=WEXITSTATUS(status);
         printf("[PARENT] Child exited via _exit() with status %d\n",code);
@@ -467,7 +491,7 @@ static int limit_demo(void){
     else if(WIFEXITED(status))printf("Parent: child exited with code %d (expected SIGXFSZ)\n",WEXITSTATUS(status));
     else if(WIFSIGNALED(status))printf("Parent: unexpected signal %d\n",WTERMSIG(status));
     if(unlink(tmp)<0){perror("unlink temporary test file");return -1;}
-    puts("Parent: temporary test file removed.");return ok?0:-1;
+    puts("Parent: temporary test file removed.");puts("Parent: child reaped with waitpid(); file descriptor closed.");return ok?0:-1;
 }
 /* Verify only IPC names belonging to CampusCompute; never delete unknown objects. */
 static int verify_ipc_objects(void){
