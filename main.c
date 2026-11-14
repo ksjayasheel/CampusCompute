@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+#include <dirent.h>
 
 #define MAX_JOBS 64
 #define MAX_EVENTS 100000
@@ -466,13 +467,42 @@ static int limit_demo(void){
     if(unlink(tmp)<0){perror("unlink temporary test file");return -1;}
     puts("Temporary test file removed.");return ok?0:-1;
 }
-static int cleanup_demo(void){
-    printf("\n=== CLEANUP ===\n");
-    if(unlink(LOG_FILE)==0)puts("Removed this project's campuscompute.log");
-    else if(errno==ENOENT)puts("No project log exists; nothing to remove");
-    else {perror("unlink log");return -1;}
-    puts("Threads/processes are joined/reaped per demo; named IPC objects unlinked in ipc demo.");
+/* Verify only IPC names belonging to CampusCompute; never delete unknown objects. */
+static int verify_ipc_objects(void){
+    DIR *dir=opendir("/dev/shm");
+    if(!dir){perror("opendir /dev/shm");return -1;}
+    struct dirent *ent;
+    int count=0;
+    while((ent=readdir(dir))!=NULL){
+        const char *name=ent->d_name;
+        if(!strncmp(name,"campuscompute_",14) ||
+           !strncmp(name,"sem.cc_request_",15) ||
+           !strncmp(name,"sem.cc_response_",16)){
+            printf("[CHECK] Remaining CampusCompute IPC object: %s\n",name);
+            count++;
+        }
+    }
+    if(closedir(dir)<0){perror("closedir /dev/shm");return -1;}
+    if(count){printf("[FAIL] %d matching IPC object(s) remain; not removing them automatically\n",count);return -1;}
+    puts("[PASS] No CampusCompute shared-memory or named-semaphore objects in /dev/shm");
     return 0;
+}
+static int cleanup_demo(void){
+    printf("\n=== CLEANUP AND VERIFICATION ===\n");
+    int failed=0;
+    if(unlink(LOG_FILE)==0)puts("[PASS] Removed generated campuscompute.log");
+    else if(errno==ENOENT)puts("[PASS] Project log already absent");
+    else{perror("unlink log");failed=1;}
+    if(access(LOG_FILE,F_OK)==0){puts("[FAIL] Project log still exists");failed=1;}
+    else if(errno==ENOENT)puts("[PASS] Project log absent");
+    else{perror("verify log absence");failed=1;}
+    if(verify_ipc_objects()!=0)failed=1;
+    /* The cleanup command runs in a fresh process. It cannot directly verify
+       threads/children of earlier runs; their demos join/reap before returning. */
+    puts("[INFO] Logger joins its threads; IPC, worker and limit demos reap their children.");
+    puts("[INFO] Previous-run child/thread cleanup cannot be proven from this separate command.");
+    printf("Cleanup verification: %s\n",failed?"FAIL":"PASS (log and IPC objects)");
+    return failed?-1:0;
 }
 static int options(int argc,char **argv,int start,const char **file,int *quantum){
     *file=NULL;*quantum=2;
