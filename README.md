@@ -30,7 +30,7 @@ To navigate interactively, run `./campuscompute menu`.
 | FR6 | `./campuscompute worker normal` | fork + waitpid + exit status 0 |
 | FR6 | `./campuscompute worker fail` | Deliberately simulated exit code 42, detected by parent |
 | FR7 | `./campuscompute limit` | RLIMIT_FSIZE applied inside child; SIGXFSZ detected by parent |
-| FR7 | `./campuscompute cleanup` | Deletes program-created log; IPC is unlinked by IPC demo |
+| FR7 | `./campuscompute cleanup` | Removes generated log, verifies its absence, and checks /dev/shm for leftover CampusCompute IPC objects |
 | FR8 | `./campuscompute menu` | Optional interactive menu |
 | FR8 | `./campuscompute bogus` | Invalid command error (nonzero exit status) |
 | FR8 | `./campuscompute fcfs --file samples/jobs_invalid.csv` | Invalid CSV error (nonzero exit status) |
@@ -74,7 +74,7 @@ Each screenshot must show the **full actual SRN in the terminal prompt**, with a
 
 ## Cleanup and important cautions
 
-- The logger creates `campuscompute.log` in the working directory; `cleanup` only unlinks this named log. Back up an existing log before running it if you need to keep it.
+- The logger creates `campuscompute.log` in the working directory. `cleanup` removes that log and verifies its absence, then scans `/dev/shm` for CampusCompute-specific shared-memory and semaphore names without deleting them. Back up an existing log before running cleanup if you need to keep it.
 - The IPC demonstration uses names based on its PID; it unlinks only names it created. The child is reaped by `waitpid`, and threads are joined. IPC waits for the response for at most five seconds.
 - The resource-limit demo uses a unique `/tmp` file and removes it afterward. The `SIGXFSZ` termination is an expected outcome **for that child**, not an actual system fault.
 - The simulated worker failure is intentional and explicitly labelled, not a real OS failure.
