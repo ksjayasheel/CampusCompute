@@ -277,7 +277,7 @@ static int logger_demo(void){
     rc=pthread_cond_init(&q.not_full,NULL);if(rc){fprintf(stderr,"cond init: %s\n",strerror(rc));pthread_mutex_destroy(&q.mu);fclose(f);return -1;}
     rc=pthread_cond_init(&q.not_empty,NULL);if(rc){fprintf(stderr,"cond init: %s\n",strerror(rc));pthread_cond_destroy(&q.not_full);pthread_mutex_destroy(&q.mu);fclose(f);return -1;}
     /* On thread-creation errors, maintain producer count so consumer can terminate. */
-    int consumer_started=0,started=0;
+    int consumer_started=0,started=0,join_failed=0;
     rc=pthread_create(&consumer,NULL,consumer_thread,&q);
     if(rc){fprintf(stderr,"consumer create: %s\n",strerror(rc));goto finish;}
     consumer_started=1;
@@ -286,7 +286,6 @@ static int logger_demo(void){
         if(rc){fprintf(stderr,"producer create: %s\n",strerror(rc));break;}started++;
     }
     if(started<2){pthread_mutex_lock(&q.mu);q.active_producers-=2-started;pthread_cond_broadcast(&q.not_empty);pthread_mutex_unlock(&q.mu);}
-    int join_failed=0;
     for(int i=0;i<started;i++){
         int join_rc=pthread_join(producers[i],NULL);
         if(join_rc){fprintf(stderr,"producer join: %s\n",strerror(join_rc));join_failed=1;}
