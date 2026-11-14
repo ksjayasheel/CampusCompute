@@ -40,25 +40,44 @@ typedef struct {Event ev[MAX_EVENTS]; int n;} Timeline;
 typedef struct {double avg_wait, avg_turn, utilization; int makespan, busy, completed;} Stats;
 
 static void usage(const char *prog) {
-    printf("CampusCompute - OS Level 3 mini-project\n"
+    printf("\n"
+           "============================================================\n"
+           "                    CAMPUSCOMPUTE\n"
+           "             Job Scheduling & Resource Management\n"
+           "============================================================\n"
            "Usage: %s <command> [options]\n"
-           "  help                         Show this help\n"
-           "  fcfs [--file jobs.csv]       First Come First Served\n"
-           "  rr [--quantum N] [--file jobs.csv] Round Robin (default quantum=2)\n"
-           "  priority [--file jobs.csv]   Non-preemptive priority\n"
-           "  compare [--quantum N] [--file jobs.csv] Compare same workload\n"
-           "  logger                       Bounded POSIX producer-consumer logging\n"
-           "  ipc                          POSIX shared memory + named semaphores\n"
-           "  banker safe|unsafe           Banker's safety analysis\n"
-           "  worker normal|fail           fork/waitpid worker demonstration\n"
-           "  limit                        setrlimit(RLIMIT_FSIZE) demonstration\n"
-           "  cleanup                      Remove this project's generated log\n"
-           "  all                          Run all demos, including safe/unsafe cases\n"
-           "  menu                         Interactive demo menu\n"
-           "\nJobs CSV: id,arrival,burst,priority (header optional).\n"
-           "Rules: lower priority number wins; ties: earlier arrival, then smaller ID.\n"
-           "RR: FIFO ready queue, arrivals are queued before an expired job is requeued.\n",
-           prog);
+           "\n"
+           "SCHEDULING\n"
+           "  fcfs       [--file PATH]               First Come First Served\n"
+           "  rr         [--quantum N] [--file PATH] Round Robin (default N=2)\n"
+           "  priority   [--file PATH]               Non-preemptive Priority\n"
+           "  compare    [--quantum N] [--file PATH] Compare scheduling policies\n"
+           "\n"
+           "CONCURRENCY & RESOURCE MANAGEMENT\n"
+           "  logger                                 Producer-consumer event logger\n"
+           "  ipc                                    Shared memory and semaphores\n"
+           "  banker     safe|unsafe                Banker's safety algorithm\n"
+           "  worker     normal|fail                Worker completion/failure\n"
+           "  limit                                  Process file-size limit\n"
+           "  cleanup                                Clean up and verify resources\n"
+           "\n"
+           "GENERAL\n"
+           "  all                                    Run integrated demonstration\n"
+           "  menu                                   Open interactive menu\n"
+           "  help                                   Show command reference\n"
+           "\n"
+           "EXAMPLES\n"
+           "  %s rr --quantum 3 --file samples/jobs.csv\n"
+           "  %s banker safe\n"
+           "  %s worker fail\n"
+           "  %s all\n"
+           "\n"
+           "INPUT & SCHEDULING RULES\n"
+           "  CSV columns: id,arrival,burst,priority (optional header)\n"
+           "  Lower priority number runs first; ties: arrival, then job ID.\n"
+           "  RR uses FIFO; new arrivals join before the preempted job.\n"
+           "============================================================\n",
+           prog,prog,prog,prog,prog);
 }
 static int parse_int(const char *s, int min, int max, int *value) {
     if(!s || !*s) return -1;
@@ -592,11 +611,23 @@ int main(int argc,char **argv){
 static int interactive_menu(void){
     const char *choices[]={"fcfs","rr","priority","compare","logger","ipc","banker","banker","worker","worker","limit","all","cleanup"};
     const char *extra[]={NULL,NULL,NULL,NULL,NULL,NULL,"safe","unsafe","normal","fail",NULL,NULL,NULL};
-    puts("\nCampusCompute interactive menu");
+    puts("\n============================================================");
+    puts("                 CAMPUSCOMPUTE MENU");
+    puts("============================================================");
     for(;;){
-        puts("\n1 FCFS | 2 RR | 3 Priority | 4 Compare | 5 Logger | 6 IPC");
-        puts("7 Banker SAFE | 8 Banker UNSAFE | 9 Worker normal | 10 Worker fail");
-        puts("11 Resource limit | 12 Integrated demo | 13 Cleanup | 0 Exit");
+        puts("\n  SCHEDULING");
+        puts("    1. FCFS scheduling       2. Round Robin scheduling");
+        puts("    3. Priority scheduling   4. Compare scheduling");
+        puts("\n  CONCURRENCY & RESOURCE MANAGEMENT");
+        puts("    5. Activity logger       6. Shared-memory IPC");
+        puts("    7. Banker: safe state    8. Banker: unsafe state");
+        puts("    9. Worker: normal       10. Worker: simulated failure");
+        puts("   11. Resource limit");
+        puts("\n  GENERAL");
+        puts("   12. Run all demonstrations");
+        puts("   13. Cleanup and verification");
+        puts("    0. Exit");
+        puts("------------------------------------------------------------");
         printf("Choose 0-13: ");fflush(stdout);
         char line[80];if(!fgets(line,sizeof(line),stdin))return 0;
         char *e;errno=0;long option=strtol(line,&e,10);
