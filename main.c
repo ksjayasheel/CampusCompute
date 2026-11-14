@@ -277,7 +277,7 @@ static int logger_demo(void){
     rc=pthread_cond_init(&q.not_full,NULL);if(rc){fprintf(stderr,"cond init: %s\n",strerror(rc));pthread_mutex_destroy(&q.mu);fclose(f);return -1;}
     rc=pthread_cond_init(&q.not_empty,NULL);if(rc){fprintf(stderr,"cond init: %s\n",strerror(rc));pthread_cond_destroy(&q.not_full);pthread_mutex_destroy(&q.mu);fclose(f);return -1;}
     /* On thread-creation errors, maintain producer count so consumer can terminate. */
-    int consumer_started=0,started=0,join_failed=0;
+    int consumer_started=0,started=0,join_failed=0,cleanup_failed=0;
     rc=pthread_create(&consumer,NULL,consumer_thread,&q);
     if(rc){fprintf(stderr,"consumer create: %s\n",strerror(rc));goto finish;}
     consumer_started=1;
@@ -295,16 +295,15 @@ static int logger_demo(void){
         if(join_rc){fprintf(stderr,"consumer join: %s\n",strerror(join_rc));join_failed=1;}
     }
     /* Synchronization objects are destroyed only after all threads have joined. */
-    if(!join_failed)puts("[FR3 cleanup] All started producer/consumer threads joined");
+    if(!join_failed)puts("[CLEANUP] Producer and consumer threads joined");
 finish:
-    int cleanup_failed=0;
     if(join_failed)cleanup_failed=1;
     if(pthread_cond_destroy(&q.not_empty)!=0)cleanup_failed=1;
     if(pthread_cond_destroy(&q.not_full)!=0)cleanup_failed=1;
     if(pthread_mutex_destroy(&q.mu)!=0)cleanup_failed=1;
-    if(!cleanup_failed)puts("[FR3 cleanup] Condition variables and mutex destroyed");
+    if(!cleanup_failed)puts("[CLEANUP] Mutex and condition variables destroyed");
     if(fclose(f)!=0){perror("close log");cleanup_failed=1;}
-    else puts("[FR3 cleanup] Log file closed (retained for S22 evidence)");
+    else puts("[CLEANUP] Log file closed; saved for later inspection");
     if(rc||q.failed||cleanup_failed){fprintf(stderr,"Logger did not complete successfully\n");return -1;}
     printf("All threads joined: produced=%d consumed=%d pending=%d full_waits=%d empty_waits=%d\n",q.produced,q.consumed,q.count,q.wait_full,q.wait_empty);
     printf("Generated log: %s\n",LOG_FILE);
@@ -360,17 +359,17 @@ cleanup:
         if(waited<0){perror("waitpid");ret=-1;}
         else if(ret==0 && (!WIFEXITED(status)||WEXITSTATUS(status)!=0)){
             fprintf(stderr,"IPC child terminated unsuccessfully\n");ret=-1;
-        }else puts("[FR4 cleanup] Child process reaped with waitpid()");
+        }else puts("[CLEANUP] Child process reaped successfully");
     }
     if(resp!=SEM_FAILED && sem_close(resp)<0){perror("sem_close response");ret=-1;}
     if(req!=SEM_FAILED && sem_close(req)<0){perror("sem_close request");ret=-1;}
     if(block!=MAP_FAILED && munmap(block,sizeof(*block))<0){perror("munmap");ret=-1;}
     if(fd>=0 && close(fd)<0){perror("close shared-memory fd");ret=-1;}
     /* Only objects created with this process-specific name are unlinked. */
-    if(resp!=SEM_FAILED){if(sem_unlink(response_name)<0){perror("sem_unlink response");ret=-1;}else puts("[FR4 cleanup] Response semaphore unlinked");}
-    if(req!=SEM_FAILED){if(sem_unlink(request_name)<0){perror("sem_unlink request");ret=-1;}else puts("[FR4 cleanup] Request semaphore unlinked");}
-    if(fd>=0){if(shm_unlink(shm_name)<0){perror("shm_unlink");ret=-1;}else puts("[FR4 cleanup] Shared-memory object unlinked");}
-    if(ret==0)puts("[FR4 cleanup] Shared mapping and handles closed; IPC resources released");
+    if(resp!=SEM_FAILED){if(sem_unlink(response_name)<0){perror("sem_unlink response");ret=-1;}else puts("[CLEANUP] Response semaphore removed");}
+    if(req!=SEM_FAILED){if(sem_unlink(request_name)<0){perror("sem_unlink request");ret=-1;}else puts("[CLEANUP] Request semaphore removed");}
+    if(fd>=0){if(shm_unlink(shm_name)<0){perror("shm_unlink");ret=-1;}else puts("[CLEANUP] Shared-memory object removed");}
+    if(ret==0)puts("[CLEANUP] Shared-memory mapping and IPC handles closed");
     return ret;
 }
 
