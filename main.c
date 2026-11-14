@@ -443,7 +443,8 @@ static int limit_demo(void){
     if(pid==0){
         struct rlimit lim={1024,1024};
         if(setrlimit(RLIMIT_FSIZE,&lim)<0){perror("setrlimit");_exit(3);}
-        printf("Child: soft limit = 1024 bytes; hard limit = 1024 bytes\n");\n        printf("Child: attempting to write 2048 bytes to the temporary file\n");fflush(stdout);
+        printf("Child: soft limit = 1024 bytes; hard limit = 1024 bytes\n");
+        printf("Child: attempting to write 2048 bytes to the temporary file\n");fflush(stdout);
         char data[2048];memset(data,'X',sizeof(data));
         /* A write beyond RLIMIT_FSIZE raises SIGXFSZ (default: terminate). */
         /* On Linux, exceeding RLIMIT_FSIZE normally terminates the child with SIGXFSZ. */
@@ -453,7 +454,8 @@ static int limit_demo(void){
             fprintf(stderr,"Child: first write completed %zd of 2048 requested bytes\n",nw);
             /* If the first write was partial, a further write triggers SIGXFSZ. */
             if ((size_t)nw < sizeof(data)) {
-                fprintf(stderr,"Child: attempting another 1-byte write beyond the 1024-byte limit\n");fflush(stderr);\n                ssize_t next = write(fd, data + nw, 1);
+                fprintf(stderr,"Child: attempting another 1-byte write beyond the 1024-byte limit\n");fflush(stderr);
+                ssize_t next = write(fd, data + nw, 1);
                 if (next < 0) perror("second write failed");
             }
         }
