@@ -33,7 +33,7 @@ run banker safe; contains "SAFE: sequence"
 run banker unsafe; contains "UNSAFE:"
 run logger; contains "produced=12 consumed=12 pending=0"
 test "$(wc -l < campuscompute.log)" -eq 12
-run ipc; contains "Shared-memory object unlinked"
+run ipc; contains "\[CLEANUP\] Shared-memory object removed"
 run worker normal; contains "status 0"
 run worker fail; contains "SIMULATED FAILURE"
 run limit; contains "SIGXFSZ"
