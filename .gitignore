@@ -1,9 +1,5 @@
-cccampuscompute
-*d*.o
-dd*.log
-cccore
-cccore.*
 campuscompute
 *.o
 *.log
-
+core
+core.*
