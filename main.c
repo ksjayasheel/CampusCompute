@@ -79,6 +79,12 @@ static void usage(const char *prog) {
            "============================================================\n",
            prog,prog,prog,prog,prog);
 }
+static void section(const char *title) {
+    printf("\n============================================================\n");
+    printf("  %s\n", title);
+    puts("============================================================");
+}
+static void subheading(const char *title) { printf("\n-- %s --\n", title); }
 static int parse_int(const char *s, int min, int max, int *value) {
     if(!s || !*s) return -1;
     errno=0; char *end=NULL; long v=strtol(s,&end,10);
@@ -212,12 +218,12 @@ static int schedule_demo(Job *original,int n,int method,int quantum,int verbose,
     if(schedule(j,n,method,quantum,&tl)){fprintf(stderr,"Scheduling failed\n");return -1;}
     Stats s=stats(j,n);if(out)*out=s;
     if(!verbose)return 0;
-    printf("\n=== %s ===\n",policy_name(method));
+    section(policy_name(method));
     if(method==1)printf("Time quantum = %d\n",quantum);
     printf("Tie-break: arrival time ascending, then job ID ascending; priority: smaller number first.\n");
     puts("Lifecycle: NEW (before arrival) -> READY -> RUNNING -> COMPLETED.");
     if(method==1)puts("Round Robin: unfinished jobs return from RUNNING to READY after a time slice.");
-    printf("Timeline (start -> end):\n");
+    subheading("EXECUTION TIMELINE (start -> end)");
     for(int k=0;k<tl.n;k++){
         if(tl.ev[k].job<0)printf("  %d -> %d : IDLE\n",tl.ev[k].start,tl.ev[k].end);
         else {
@@ -230,10 +236,11 @@ static int schedule_demo(Job *original,int n,int method,int quantum,int verbose,
                    completed_here ? "COMPLETED" : "READY");
         }
     }
-    printf("Gantt chart: ");
+    subheading("GANTT CHART"); printf("  ");
     for(int k=0;k<tl.n;k++)if(tl.ev[k].job<0)printf("|IDLE %d-%d",tl.ev[k].start,tl.ev[k].end);else printf("|J%d %d-%d",tl.ev[k].job,tl.ev[k].start,tl.ev[k].end);
     puts("|");
-    printf("Execution order: ");int shown=0;for(int k=0;k<tl.n;k++)if(tl.ev[k].job>=0){printf("%sJ%d",shown?" -> ":"",tl.ev[k].job);shown++;}puts("");
+    subheading("EXECUTION ORDER"); printf("  ");int shown=0;for(int k=0;k<tl.n;k++)if(tl.ev[k].job>=0){printf("%sJ%d",shown?" -> ":"",tl.ev[k].job);shown++;}puts("");
+    subheading("JOB METRICS & LIFECYCLE");
     printf("%-6s %-8s %-7s %-8s %-11s %-12s %-8s %-10s %-12s\n",
            "Job","Arrival","Burst","Priority","Completion","Turnaround","Waiting","At t=0","Final status");
     for(int i=0;i<n;i++)
@@ -243,13 +250,16 @@ static int schedule_demo(Job *original,int n,int method,int quantum,int verbose,
                j[i].completion-j[i].arrival-j[i].burst,
                job_status_name(j[i].arrival==0?JOB_READY:JOB_NEW),
                job_status_name(j[i].status));
+    subheading("SUMMARY");
     printf("Completed jobs: %d/%d\n",s.completed,n);
     printf("Average turnaround = %.2f; average waiting = %.2f; makespan = %d; CPU utilization = %.2f%%\n",s.avg_turn,s.avg_wait,s.makespan,s.utilization);
     return 0;
 }
 static int compare_demo(Job *j,int n,int quantum){
-    Stats s[3];printf("Comparing all policies on SAME %d-job workload (RR quantum=%d)\n",n,quantum);
+    Stats s[3];section("SCHEDULING POLICY COMPARISON");
+    printf("Same workload: %d jobs | RR quantum: %d\n",n,quantum);
     for(int m=0;m<3;m++)if(schedule_demo(j,n,m,quantum,0,&s[m]))return -1;
+    subheading("COMPARISON RESULTS");
     printf("%-24s %-18s %-18s %-10s %-10s %-12s\n","Policy","Avg turnaround","Avg waiting","Makespan","CPU util","Completed");
     for(int m=0;m<3;m++)printf("%-24s %-18.2f %-18.2f %-10d %9.2f%% %7d/%d\n",
         policy_name(m),s[m].avg_turn,s[m].avg_wait,s[m].makespan,s[m].utilization,s[m].completed,n);
@@ -289,7 +299,9 @@ static void *consumer_thread(void *arg){
     printf("[consumer] drained queue and exited cleanly\n");return NULL;
 }
 static int logger_demo(void){
-    printf("\n=== BOUNDED PRODUCER-CONSUMER LOGGER ===\n");
+    section("BOUNDED PRODUCER-CONSUMER LOGGER");
+    puts("Configuration: 2 producers | 1 consumer | queue capacity 4 | 12 events");
+    subheading("CONCURRENT EVENTS");
     FILE *f=fopen(LOG_FILE,"w");if(!f){perror("open log");return -1;}
     LogQueue q={.active_producers=2,.file=f};pthread_t producers[2],consumer;ProducerArg args[2]={{&q,1},{&q,2}};
     int rc=pthread_mutex_init(&q.mu,NULL);if(rc){fprintf(stderr,"mutex init: %s\n",strerror(rc));fclose(f);return -1;}
@@ -314,6 +326,7 @@ static int logger_demo(void){
         if(join_rc){fprintf(stderr,"consumer join: %s\n",strerror(join_rc));join_failed=1;}
     }
     /* Synchronization objects are destroyed only after all threads have joined. */
+    subheading("THREAD CLEANUP");
     if(!join_failed)puts("[CLEANUP] Producer and consumer threads joined");
 finish:
     if(join_failed)cleanup_failed=1;
@@ -324,6 +337,7 @@ finish:
     if(fclose(f)!=0){perror("close log");cleanup_failed=1;}
     else puts("[CLEANUP] Log file closed; saved for later inspection");
     if(rc||q.failed||cleanup_failed){fprintf(stderr,"Logger did not complete successfully\n");return -1;}
+    subheading("LOGGER SUMMARY");
     printf("All threads joined: produced=%d consumed=%d pending=%d full_waits=%d empty_waits=%d\n",q.produced,q.consumed,q.count,q.wait_full,q.wait_empty);
     printf("Generated log: %s\n",LOG_FILE);
     return (q.produced==LOG_ITEMS && q.consumed==LOG_ITEMS && q.count==0)?0:-1;
@@ -331,7 +345,8 @@ finish:
 
 typedef struct {int input,result;char message[96];} SharedBlock;
 static int ipc_demo(void){
-    printf("\n=== POSIX SHARED MEMORY IPC + NAMED SEMAPHORES ===\n");
+    section("SHARED MEMORY IPC & NAMED SEMAPHORES");
+    subheading("PROCESS COMMUNICATION");
     char shm_name[64],request_name[64],response_name[64];
     snprintf(shm_name,sizeof(shm_name),"/campuscompute_%ld",(long)getpid());
     snprintf(request_name,sizeof(request_name),"/cc_request_%ld",(long)getpid());
@@ -371,6 +386,7 @@ static int ipc_demo(void){
     printf("Parent read: result=%d; message='%s'\n",block->result,block->message);
     ret=0;
 cleanup:
+    subheading("IPC CLEANUP");
     if(pid>0){
         int status;pid_t waited;
         if(ret!=0 && kill(pid,SIGTERM)<0 && errno!=ESRCH){perror("kill IPC child");ret=-1;}
@@ -401,8 +417,9 @@ static int banker_demo(int unsafe){
     if(unsafe){avail[0]=1;avail[1]=2;avail[2]=2;}
     int need[P][R],work[R],finish[P]={0},seq[P],len=0;
     for(int r=0;r<R;r++)work[r]=avail[r];
-    printf("\n=== BANKER'S %s STATE ===\n",unsafe?"UNSAFE":"SAFE");
+    section(unsafe?"BANKER'S ALGORITHM: UNSAFE CASE":"BANKER'S ALGORITHM: SAFE CASE");
     printf("Available / initial Work: [%d %d %d]\n",work[0],work[1],work[2]);
+    subheading("RESOURCE MATRICES");
     puts("Job  Allocation  Maximum     Need");
     for(int i=0;i<P;i++){
         for(int r=0;r<R;r++){
@@ -431,6 +448,7 @@ static int banker_demo(int unsafe){
             finish[i]=1;seq[len++]=i;progressed=1;
         }
     } while(progressed && len<P);
+    subheading("SAFETY RESULT");
     if(len==P){
         printf("\nSAFE: sequence ");
         for(int i=0;i<len;i++)printf("%sP%d",i?" -> ":"",seq[i]);
@@ -444,7 +462,7 @@ static int banker_demo(int unsafe){
     return (unsafe?(len==P):(len!=P))?-1:0;
 }
 static int worker_demo(int fail){
-    printf("\n=== WORKER %s ===\n",fail?"SIMULATED FAILURE":"NORMAL COMPLETION");
+    section(fail?"WORKER: SIMULATED FAILURE":"WORKER: NORMAL COMPLETION");
     fflush(NULL);
     pid_t pid=fork();
     if(pid<0){perror("fork");return -1;}
@@ -478,7 +496,7 @@ static int worker_demo(int fail){
     return -1;
 }
 static int limit_demo(void){
-    printf("\n=== PROCESS RESOURCE LIMIT: RLIMIT_FSIZE ===\n");
+    section("PROCESS RESOURCE LIMIT: RLIMIT_FSIZE");
     char tmp[]="/tmp/campuscompute_limit_XXXXXX";int fd=mkstemp(tmp);if(fd<0){perror("mkstemp");return -1;}
     fflush(NULL);pid_t pid=fork();if(pid<0){perror("fork");close(fd);unlink(tmp);return -1;}
     if(pid==0){
@@ -507,6 +525,7 @@ static int limit_demo(void){
     else if(WIFSIGNALED(status)&&WTERMSIG(status)==SIGXFSZ){puts("Parent: child terminated by SIGXFSZ (file size exceeded).");puts("Parent: RLIMIT_FSIZE successfully enforced.");ok=1;}
     else if(WIFEXITED(status))printf("Parent: child exited with code %d (expected SIGXFSZ)\n",WEXITSTATUS(status));
     else if(WIFSIGNALED(status))printf("Parent: unexpected signal %d\n",WTERMSIG(status));
+    subheading("RESOURCE CLEANUP");
     if(unlink(tmp)<0){perror("unlink temporary test file");return -1;}
     puts("Parent: temporary test file removed.");puts("Parent: child reaped with waitpid(); file descriptor closed.");return ok?0:-1;
 }
@@ -531,7 +550,7 @@ static int verify_ipc_objects(void){
     return 0;
 }
 static int cleanup_demo(void){
-    printf("\n=== CLEANUP AND VERIFICATION ===\n");
+    section("CLEANUP AND VERIFICATION");
     int failed=0;
     if(unlink(LOG_FILE)==0)puts("[PASS] Removed generated campuscompute.log");
     else if(errno==ENOENT)puts("[PASS] Project log already absent");
@@ -539,6 +558,7 @@ static int cleanup_demo(void){
     if(access(LOG_FILE,F_OK)==0){puts("[FAIL] Project log still exists");failed=1;}
     else if(errno==ENOENT)puts("[PASS] Project log absent");
     else{perror("verify log absence");failed=1;}
+    subheading("IPC RESOURCE VERIFICATION");
     if(verify_ipc_objects()!=0)failed=1;
     /* The cleanup command runs in a fresh process. It cannot directly verify
        threads/children of earlier runs; their demos join/reap before returning. */
@@ -571,7 +591,9 @@ static int run_all(void){
     if(worker_demo(0))fail++;
     if(worker_demo(1))fail++;
     if(limit_demo())fail++;
-    printf("\n=== INTEGRATED SUMMARY ===\nModules: FCFS, RR, Priority, comparison, logger, IPC, Banker's x2, worker x2, resource limit\nFailures: %d; generated log: %s\n",fail,LOG_FILE);
+    section("INTEGRATED SUMMARY");
+    puts("Modules: FCFS, RR, Priority, comparison, logger, IPC, Banker's x2, worker x2, resource limit");
+    printf("Failures: %d; generated log: %s\n",fail,LOG_FILE);
     return fail?1:0;
 }
 static int interactive_menu(void);
