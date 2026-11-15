@@ -1,12 +1,12 @@
-# CampusCompute — OS Level 3 Mini-Project (Improved)
+# CampusCompute — Intelligent Job Scheduling and Resource Management
 
 **Platform:** Ubuntu / Linux / WSL Ubuntu. **Language:** C11 and POSIX APIs.
-This is source code, not a fabricated screenshot submission. Execute commands on your own terminal.
+All demonstrations are produced by the C program. Run the commands on your own Linux/Ubuntu terminal.
 
 ## Build and quick start
 
 ```bash
-sudo apt update && sudo apt install build-essential make unzip
+sudo apt update && sudo apt install build-essential make zip unzip
 make clean && make
 ./campuscompute help
 ./campuscompute all
@@ -68,7 +68,7 @@ export SRN='REPLACE_WITH_YOUR_FULL_SRN'
 export PS1='[$SRN] \w\$ '
 ```
 
-Capture: S01 `pwd; uname -a`; S02 `gcc --version; make --version`; S03 `ls -l`; S04 `make clean && make`; S05 `./campuscompute help`; S06 FCFS; S07 RR; S08 Priority; S09 compare; S10-S11 logger (including summary); S12-S13 IPC and the unlink output; S14-S15 Banker safe/unsafe; S16-S17 worker normal/fail; S18 limit; S19 invalid input; S20 cleanup and `ls /dev/shm | grep campuscompute || echo 'no CampusCompute IPC objects'`; S21 integrated run; S22 `head -n 12 campuscompute.log` (run `all` AFTER cleanup); S23 `ls -l`; S24 `unzip -l CampusCompute_Improved.zip; unzip -t CampusCompute_Improved.zip` (adapt archive location as needed).
+Capture: S01 `pwd; uname -a`; S02 `gcc --version; make --version`; S03 `ls -l`; S04 `make clean && make`; S05 `./campuscompute help`; S06 FCFS; S07 RR; S08 Priority; S09 compare; S10-S11 logger (including summary); S12-S13 IPC and the unlink output; S14-S15 Banker safe/unsafe; S16-S17 worker normal/fail; S18 limit; S19 invalid input; S20 cleanup and `ls /dev/shm | grep campuscompute || echo 'no CampusCompute IPC objects'`; S21 integrated run; S22 `head -n 12 campuscompute.log` (run `all` AFTER cleanup); S23 `ls -l`; S24 `unzip -l PES1UG25CS224.zip; unzip -t PES1UG25CS224.zip` (adapt archive location as needed).
 
 Each screenshot must show the **full actual SRN in the terminal prompt**, with a one-sentence caption. Combine screenshots into one PDF named with your own SRN; do not fake or reuse screenshots.
 
@@ -87,6 +87,3 @@ Each screenshot must show the **full actual SRN in the terminal prompt**, with a
 - `samples/`: job and invalid-input examples.
 - `test_commands.sh`: repeatable smoke tests (`make check`).
 
-## Sources of ideas
-
-The reference screenshot PDFs show techniques such as Gantt output, process counts, and custom resource states; their original C source code was **not supplied**. This project is an independent improvement of the existing `main.c`, not a claim that those PDF sources were audited or reused.
