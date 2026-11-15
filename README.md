@@ -59,18 +59,6 @@ id,arrival,burst,priority
 
 IDs unique and positive, arrivals nonnegative, CPU bursts positive, priorities nonnegative. Maximum 64 jobs.
 
-## Screenshot evidence: S01 to S24
-
-The PDF submission is evidence of *your own terminal*, not part of the source ZIP. Before screenshots:
-
-```bash
-export SRN='REPLACE_WITH_YOUR_FULL_SRN'
-export PS1='[$SRN] \w\$ '
-```
-
-Capture: S01 `pwd; uname -a`; S02 `gcc --version; make --version`; S03 `ls -l`; S04 `make clean && make`; S05 `./campuscompute help`; S06 FCFS; S07 RR; S08 Priority; S09 compare; S10-S11 logger (including summary); S12-S13 IPC and the unlink output; S14-S15 Banker safe/unsafe; S16-S17 worker normal/fail; S18 limit; S19 invalid input; S20 cleanup and `ls /dev/shm | grep campuscompute || echo 'no CampusCompute IPC objects'`; S21 integrated run; S22 `head -n 12 campuscompute.log` (run `all` AFTER cleanup); S23 `ls -l`; S24 `unzip -l PES1UG25CS224.zip; unzip -t PES1UG25CS224.zip` (adapt archive location as needed).
-
-Each screenshot must show the **full actual SRN in the terminal prompt**, with a one-sentence caption. Combine screenshots into one PDF named with your own SRN; do not fake or reuse screenshots.
 
 ## Cleanup and important cautions
 
