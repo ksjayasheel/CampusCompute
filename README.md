@@ -1,19 +1,40 @@
 # CampusCompute — Intelligent Job Scheduling and Resource Management
 
-**Platform:** Ubuntu / Linux / WSL Ubuntu. **Language:** C11 and POSIX APIs.
-All demonstrations are produced by the C program. Run the commands on your own Linux/Ubuntu terminal.
+CampusCompute is a command-line operating systems mini-project written in C. It demonstrates CPU scheduling, job lifecycle tracking, producer-consumer synchronization, interprocess communication, deadlock avoidance, worker-process monitoring, and resource limits on Linux.
 
-## Build and quick start
+**Platform:** Ubuntu / Linux / WSL Ubuntu  
+**Language:** C11 with POSIX APIs
+
+The program runs its demonstrations locally in the terminal.
+
+## Prerequisites
+
+On Ubuntu or WSL Ubuntu, install the compiler and build tools:
 
 ```bash
-sudo apt update && sudo apt install build-essential make zip unzip
+sudo apt update
+sudo apt install build-essential make
+```
+
+## Build and run
+
+From the project directory, compile the program and explore its commands:
+
+```bash
 make clean && make
 ./campuscompute help
 ./campuscompute all
+```
+
+For the interactive menu, run `./campuscompute menu`.
+
+## Run tests
+
+```bash
 make check
 ```
 
-To navigate interactively, run `./campuscompute menu`.
+The smoke-test script runs the main demonstrations and checks expected outputs and invalid-input handling.
 
 ## Feature commands
 
@@ -58,7 +79,6 @@ id,arrival,burst,priority
 ```
 
 IDs unique and positive, arrivals nonnegative, CPU bursts positive, priorities nonnegative. Maximum 64 jobs.
-
 
 ## Cleanup and important cautions
 
